@@ -45,7 +45,7 @@ Experiments use the training seeds and weight initialization tuples from “Rand
 Training seeds:
 
 ```python
-[57, 305, 5, 9667, 405, 750, 1038, 840, 63, 988]
+[57, 305, 5, 9667, 405]
 ```
 
 Weight initialization tuples:
@@ -56,7 +56,7 @@ W2 = [8, 358, 200, 35]
 W3 = [487, 22, 900, 7]
 ```
 
-Every model runs `10 training seeds x 3 weight initialization tuples = 30 runs`.
+Every model runs `5 training seeds x 3 weight initialization tuples = 15 runs`.
 
 ## Results
 
