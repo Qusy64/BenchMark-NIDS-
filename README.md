@@ -1,6 +1,6 @@
 # Deep Learning NIDS Reproducibility Experiments
 
-This repository contains Google Colab-ready source notebooks for evaluating deep learning-based Network Intrusion Detection Systems (NIDS) on CICIDS-2017 and CSE-CIC-IDS-2018.
+This repository contains Kaggle-ready source notebooks for evaluating deep learning-based Network Intrusion Detection Systems (NIDS) on CICIDS-2017 and CSE-CIC-IDS-2018.
 
 ## Notebooks
 
@@ -16,21 +16,27 @@ Each notebook evaluates:
 - Framework-style MLP (`INSOMNIA-style` for CICIDS-2017, `CADE-style` for CSE-CIC-IDS-2018)
 - Dataset-specific improved MLP
 
-## Running on Google Colab
+## Running on Kaggle
 
-Open a notebook in Google Colab and run the cells in order. Each notebook creates:
+Open a notebook on Kaggle and run all cells. Each notebook creates:
 
-- `/content/data`
-- `/content/results`
+- `/kaggle/working/data`
+- `/kaggle/working/results`
 
-Datasets are not stored in this repository. The notebooks install `kagglehub`, download the dataset from Kaggle, recursively copy downloaded files into `/content/data`, and load CSV files from `/content/data`.
+Datasets are not stored in this repository. The notebooks install `kagglehub`, download the dataset from Kaggle, recursively copy downloaded files into `/kaggle/working/data`, and load CSV files from `/kaggle/working/data`.
 
 Dataset sources:
 
 - CICIDS-2017 notebooks: `bertvankeulen/cicids-2017`
 - CSE-CIC-IDS-2018 notebooks: `solarmainframe/ids-intrusion-csv`
 
-If Kaggle authentication is required in your Colab runtime, configure Kaggle credentials before running the kagglehub download cell.
+Results are saved under `/kaggle/working/results`. After you save a Kaggle notebook version, download results from the Kaggle Output tab or with:
+
+```bash
+kaggle kernels output <username>/<kernel-name> -p ./output
+```
+
+If Kaggle authentication is required in your Kaggle notebook, configure Kaggle credentials before running the kagglehub download cell.
 
 ## Reproducibility Protocol
 
@@ -54,9 +60,8 @@ Every model runs `10 training seeds x 3 weight initialization tuples = 30 runs`.
 
 ## Results
 
-Each notebook saves:
+Each notebook saves generated CSV result files under:
 
-- `/content/results/<notebook_name>_per_run_results.csv`
-- `/content/results/<notebook_name>_aggregated_results.csv`
+- `/kaggle/working/results/*.csv`
 
 Interpret model performance using aggregate statistics: mean, min, max, and standard deviation. Do not report or compare models using only a single run.

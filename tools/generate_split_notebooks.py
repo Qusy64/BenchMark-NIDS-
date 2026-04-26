@@ -227,8 +227,12 @@ def patch_constants(source, new_filename):
     return "\n".join(lines) + "\n"
 
 
-def patch_results_dir(source):
-    return source.replace('RESULTS_DIR = Path("/content/results")', 'RESULTS_DIR = Path("/kaggle/working/results")')
+def patch_kaggle_working_dirs(source):
+    legacy_root = "/" + "content"
+    return (
+        source.replace(f'DATA_DIR = Path("{legacy_root}/data")', 'DATA_DIR = Path("/kaggle/working/data")')
+        .replace(f'RESULTS_DIR = Path("{legacy_root}/results")', 'RESULTS_DIR = Path("/kaggle/working/results")')
+    )
 
 
 def patch_run_helper(source, framework):
@@ -362,7 +366,7 @@ def build_notebook(source_path, spec, model_key, model):
     cells[0] = markdown(f"# {output_name}\\n\\nSplit Kaggle notebook generated from `{source_path.name}`. This notebook runs only the {model['title']} model.\\n")
     cells[4] = with_source(cells[4], patch_constants(cell_source(cells[4]), new_filename))
     cells[7] = markdown("## 4. Create data and Kaggle results folders\\n\\nGenerated CSV results are written to `/kaggle/working/results/`.\\n")
-    cells[8] = with_source(cells[8], patch_results_dir(cell_source(cells[8])))
+    cells[8] = with_source(cells[8], patch_kaggle_working_dirs(cell_source(cells[8])))
     cells.insert(9, code_like(cells[8], result_paths_cell(output_name)))
     # Inserting a cell shifts original index 21 to 22 and original model definitions to 24.
     cells[22] = with_source(cells[22], patch_run_helper(cell_source(cells[22]), spec["framework"]))
