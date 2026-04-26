@@ -1,0 +1,12 @@
+data/
+results/
+*.csv
+*.zip
+*.parquet
+*.pkl
+*.h5
+*.pt
+*.pth
+*.keras
+.ipynb_checkpoints/
+__pycache__/
