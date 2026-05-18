@@ -5,7 +5,7 @@ This repository contains Kaggle-ready notebooks for evaluating reproducibility a
 The project focuses on:
 - reproducibility analysis
 - variance across random seeds
-- temporal distribution shift
+- temporal distribution shift.
 - lightweight adaptive threshold calibration
 
 ---
