@@ -2,17 +2,20 @@
 
 This repository contains Kaggle-ready notebooks for evaluating reproducibility and temporal robustness of deep learning-based Network Intrusion Detection Systems (NIDS) on the CICIDS-2017 dataset.
 
+The current experiments compare standard fixed-threshold inference with an adaptive threshold estimation method based on Extreme Value Theory (EVT).
+
 The project focuses on:
 - reproducibility analysis
 - variance across random seeds
-- temporal distribution shift.
-- lightweight adaptive threshold calibration
+- temporal distribution shift
+- binary intrusion detection on CICIDS-2017
+- adaptive EVT threshold estimation under shifted traffic
 
 ---
 
 # Research Scope
 
-This study intentionally uses a simplified experimental scope to make reproducibility analysis easier and more interpretable.
+This study intentionally uses a compact experimental scope so the reproducibility analysis remains interpretable.
 
 ## Dataset
 
@@ -22,8 +25,28 @@ Only one dataset is used:
 
 Reason:
 - widely used in NIDS research
-- many published baselines available
-- supports temporal shift evaluation naturally
+- many published baselines are available
+- naturally supports day-based temporal shift evaluation
+
+Datasets are not stored in this repository.
+
+---
+
+# Task Definition
+
+The notebooks evaluate binary intrusion detection:
+
+```text
+Benign -> 0
+Attack -> 1
+```
+
+This makes the following metrics meaningful for a security setting:
+- Recall: attack detection rate
+- False Positive Rate (FPR): benign traffic incorrectly flagged as attack
+- Precision
+- F1-score
+- ROC-AUC
 
 ---
 
@@ -32,13 +55,14 @@ Reason:
 Main evaluation scenario:
 
 ```text
-Train: Day 1-2
-Test : Day 3-5
+Train       : Day 1-2
+Calibration : 10% labeled samples from the first shifted day
+Test        : remaining samples from Day 3-5
 ```
 
 This simulates realistic temporal distribution shift in network traffic.
 
-The goal is to evaluate how model performance changes when traffic behavior evolves over time.
+The calibration split is used only for adaptive threshold estimation. The final evaluation is performed on the remaining shifted test samples.
 
 ---
 
@@ -51,60 +75,87 @@ The repository evaluates two baseline architectures:
 
 ## Motivation
 
-- MLP provides a simple fully-connected baseline
-- CNN provides a more structured architecture for tabular traffic features
+- MLP provides a simple fully-connected baseline.
+- 1D CNN provides a lightweight feature-extraction architecture for tabular traffic features.
 
 This enables comparison between:
 - shallow dense architectures
-- lightweight feature-extraction architectures
+- lightweight convolutional architectures
+- PyTorch and TensorFlow/Keras implementations
 
 ---
 
 # Frameworks
 
-Primary implementation framework:
+The current notebooks are split by framework and model:
 
-- `PyTorch`
+```text
+notebooks/split/
+├── CICIDS2017_PyTorch_MLP.ipynb
+├── CICIDS2017_PyTorch_CNN.ipynb
+├── CICIDS2017_TensorFlow_MLP.ipynb
+└── CICIDS2017_TensorFlow_CNN.ipynb
+```
 
-Additional validation framework:
-
-- `TensorFlow / Keras`
-
-TensorFlow experiments are executed only on a smaller subset as a lightweight implementation consistency check.
+PyTorch and TensorFlow/Keras now follow the same high-level protocol:
+- CICIDS-2017 temporal split
+- binary NIDS labels
+- fixed threshold baseline
+- EVT adaptive threshold comparison
+- repeated runs across seeds and weight initialization tuples
 
 ---
 
-# Adaptive Threshold Calibration
+# Threshold Methods
 
-This repository also includes a simple contribution for improving robustness under temporal shift.
+Each notebook compares two threshold strategies.
 
-## Idea
+## 1. Fixed Threshold
 
-Instead of using the default classification threshold:
+The baseline decision threshold is:
 
 ```python
 0.5
 ```
 
-the decision threshold is calibrated using a small validation-shift set.
+This is the standard fixed-threshold inference rule.
 
-Example:
+## 2. EVT Adaptive Threshold
 
-```text
-10% labeled samples from Day 3
+The improved method uses adaptive EVT-based threshold estimation inspired by:
+
+> Adaptive Threshold Estimation via Extreme Value Theory
+
+The implementation:
+1. Sorts anomaly scores from the validation-shift set.
+2. Selects the top 10% scores as the tail region.
+3. Defines a high threshold `u`.
+4. Fits a Generalized Pareto Distribution (GPD) to tail excesses with:
+
+```python
+scipy.stats.genpareto.fit(..., floc=0)
 ```
 
-The calibrated threshold is then applied to the entire shifted test set.
+5. Iteratively removes the largest tail samples as possible intrusion contamination.
+6. Re-fits the GPD after each removal.
+7. Chooses the pruning level that minimizes the Kolmogorov-Smirnov statistic.
+8. Computes the final EVT threshold using the target false alarm probability:
 
-## Goal
+```text
+alpha0 = 0.05
+```
 
-Measure how threshold adaptation affects:
-- F1-score
-- False Positive Rate (FPR)
-- Recall
-- Precision
+The EVT strategy is reported as:
 
-compared to the default threshold.
+```text
+evt_adaptive_threshold
+```
+
+The fixed strategy is reported as:
+
+```text
+default_0.5
+```
 
 ---
 
@@ -112,7 +163,7 @@ compared to the default threshold.
 
 Experiments follow a variance-aware evaluation protocol inspired by:
 
-> “Randomness Unmasked: Towards Reproducible and Fair Evaluation of Shift-Aware Deep Learning NIDS”
+> Randomness Unmasked: Towards Reproducible and Fair Evaluation of Shift-Aware Deep Learning NIDS
 
 ## Training Seeds
 
@@ -131,37 +182,51 @@ W2 = [8, 358, 200, 35]
 W3 = [487, 22, 900, 7]
 ```
 
-Each model runs:
+Each threshold strategy runs:
 
 ```text
-10 training seeds × 3 weight initialization tuples
-= 30 runs
+10 training seeds x 3 weight initialization tuples = 30 runs
+```
+
+Each notebook evaluates:
+
+```text
+30 fixed-threshold runs + 30 EVT-threshold runs = 60 evaluations
 ```
 
 ---
 
 # Running on Kaggle
 
-Open a notebook on Kaggle and run all cells.
+Open a notebook on Kaggle and attach the CICIDS-2017 dataset using **Add Input**.
 
-Each notebook automatically creates:
+The notebooks expect the dataset files to be visible under:
+
+```text
+/kaggle/input
+```
+
+Each notebook then automatically creates:
 
 ```text
 /kaggle/working/data
 /kaggle/working/results
+/kaggle/working/results/plots
 ```
 
-Datasets are not stored in this repository.
-
 The notebooks:
-1. install `kagglehub`
-2. download the dataset from Kaggle
-3. recursively copy files into `/kaggle/working/data`
-4. load CSV files from `/kaggle/working/data`
+1. read attached dataset files from `/kaggle/input`
+2. copy Monday-Friday CICIDS-2017 CSV files into `/kaggle/working/data`
+3. load CSV files from `/kaggle/working/data`
+4. build the temporal train/calibration/test split
+5. run fixed-threshold and EVT-threshold experiments
+6. save CSV results and diagnostic plots
 
-Dataset source:
+Dataset source used during development:
 
 - `bertvankeulen/cicids-2017`
+
+Note: Kaggle may block `kagglehub.dataset_download()` in non-interactive runs, so the notebooks use Add Input instead of automatic download.
 
 ---
 
@@ -172,6 +237,27 @@ Generated CSV files are saved under:
 ```text
 /kaggle/working/results/*.csv
 ```
+
+Important output files include:
+
+```text
+*_results.csv
+*_detailed_results.csv
+*_aggregated_results.csv
+*_before_after_threshold_comparison.csv
+```
+
+Diagnostic plots are saved under:
+
+```text
+/kaggle/working/results/plots
+```
+
+Plots include:
+- anomaly score distribution
+- GPD fitting curve
+- KS statistic vs removed outliers
+- confusion matrices
 
 After saving a Kaggle notebook version, outputs can be downloaded from:
 - Kaggle Output tab
@@ -195,18 +281,27 @@ Report:
 - minimum
 - maximum
 
-Do NOT compare models using only a single run.
+Do not compare models using only a single run.
 
 Recommended reporting format:
 
 ```text
-F1 = 0.842 ± 0.031
+F1 = 0.842 +/- 0.031
 ```
 
-This provides a fairer evaluation of:
-- reproducibility
-- training stability
-- robustness under temporal shift
+For threshold comparison, use:
+
+```text
+*_before_after_threshold_comparison.csv
+```
+
+Key delta columns:
+- `delta_f1_evt_minus_default`
+- `delta_fpr_evt_minus_default`
+
+Interpretation:
+- positive `delta_f1_evt_minus_default` means EVT improved mean F1.
+- negative `delta_fpr_evt_minus_default` means EVT reduced mean false positives.
 
 ---
 
@@ -214,21 +309,27 @@ This provides a fairer evaluation of:
 
 ```text
 notebooks/
-├── 01_CICIDS2017_PyTorch.ipynb
-├── 02_CICIDS2017_TensorFlow.ipynb
+└── split/
+    ├── CICIDS2017_PyTorch_MLP.ipynb
+    ├── CICIDS2017_PyTorch_CNN.ipynb
+    ├── CICIDS2017_TensorFlow_MLP.ipynb
+    └── CICIDS2017_TensorFlow_CNN.ipynb
 ```
 
 ## Notebook Description
 
-### `01_CICIDS2017_PyTorch.ipynb`
+### `CICIDS2017_PyTorch_MLP.ipynb`
 
-Main experiment notebook:
-- MLP baseline
-- CNN baseline
-- temporal shift evaluation
-- adaptive threshold calibration
-- variance analysis
+PyTorch MLP baseline with fixed threshold vs EVT adaptive threshold.
 
-### `02_CICIDS2017_TensorFlow.ipynb`
+### `CICIDS2017_PyTorch_CNN.ipynb`
 
-Smaller TensorFlow/Keras validation notebook for framework consistency checking.
+PyTorch 1D CNN baseline with fixed threshold vs EVT adaptive threshold.
+
+### `CICIDS2017_TensorFlow_MLP.ipynb`
+
+TensorFlow/Keras MLP baseline with fixed threshold vs EVT adaptive threshold.
+
+### `CICIDS2017_TensorFlow_CNN.ipynb`
+
+TensorFlow/Keras 1D CNN baseline with fixed threshold vs EVT adaptive threshold.
